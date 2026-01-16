@@ -22,11 +22,11 @@ def _fetch_picture(url: str) -> Image:
     logger.info(f"Fetched picture for url: {url}")
     return Image.open(io.BytesIO(response.content))
 
-def _get_fitted_font(draw: ImageDraw, text: str, max_width: float, start_size: int) -> ImageFont:
+def _get_fitted_font(draw: ImageDraw, text: str, max_width: float, max_height: int) -> ImageFont:
     if not text:
         return None
     
-    current_size = start_size
+    current_size = int(max_height)
     text_upper = text.upper()
 
     while current_size > 10:
@@ -35,7 +35,12 @@ def _get_fitted_font(draw: ImageDraw, text: str, max_width: float, start_size: i
         except:
             return ImageFont.load_default()
         
-        if draw.textlength(text_upper, font=font) <= max_width:
+        tw = draw.textlength(text_upper, font=font)
+
+        bbox = draw.textbbox((0, 0), text_upper, font=font)
+        th = bbox[3] - bbox[1]
+        
+        if tw <= max_width and th <= max_height:
             return font
         current_size -= 2
     
@@ -46,7 +51,7 @@ def _draw_impact(img: Image, top: str, bottom: str) -> Image:
     w, h = img.size
 
     max_w = w * 0.9
-    initial_size = int(h + 0.12)
+    initial_size = h * 0.15
 
     top_font = _get_fitted_font(draw, top, max_w, initial_size)
     bottom_font = _get_fitted_font(draw, bottom, max_w, initial_size)
@@ -54,8 +59,10 @@ def _draw_impact(img: Image, top: str, bottom: str) -> Image:
     if top_font:
         _draw_single_line(draw, top.upper(), h * 0.05, top_font, w)
     if bottom_font:
-        y_pos = h - bottom_font.size - (h * 0.05)
-        _draw_single_line(draw, bottom.upper(),y_pos, bottom_font, w)
+        bbox = draw.textbbox((0, 0), bottom.upper(), font=bottom_font)
+        text_h = bbox[3] - bbox[1]
+        y_pos = h - text_h - (h * 0.1)
+        _draw_single_line(draw, bottom.upper(), y_pos, bottom_font, w)
 
     logger.info("Text was overlaid to picture")
     return img
