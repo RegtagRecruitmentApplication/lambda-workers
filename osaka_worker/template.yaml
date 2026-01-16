@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  OsakaWorker:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: app.lambda_handler
+      Runtime: python3.13
+      MemorySize: 512
+      Timeout: 60
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: osaka-worker
+
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /generate
+            Method: post
+            RestApiId: !Ref OsakaApi
+
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: arn:aws:logs:*:*:*
+
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:PutObjectAcl
+                - s3:GetObject
+              Resource: arn:aws:s3:::email-templates-picture-bucket/*
+
+  OsakaApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowMethods: '''POST,OPTIONS'''
+        AllowHeaders: '''Content-Type,Authorization'''
+        AllowOrigin: '''*'''
